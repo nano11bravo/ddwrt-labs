@@ -1,0 +1,37 @@
+#!/bin/sh
+
+INTERVAL=10
+PACKETS=1
+USINGWAN=0
+WAN1=vlan2
+WAN2=vlan3
+WAN1GW=`nvram get wan_gateway`
+WAN2GW=`nvram get wan2_gateway`
+
+# We'll run this in the intervals given above
+while sleep $INTERVAL
+do
+        # Try to figure out the current route
+        TARGET=`ip route | awk '/default via/ {print $3}'`
+        # Set the variable, so let the script now which connection is it dealing with
+        if [ "$WAN1GW" = "$TARGET" ]; then 
+                USINGWAN=1;
+        else if [ "$WAN2GW" = "$TARGET" ]; then
+                USINGWAN=2;
+          fi;
+        fi
+        # We'll ping as many times the $PACKETS variable tells, and test if we have connection:
+        RET=`ping -c $PACKETS $TARGET 2>/dev/null | awk '/packets received/ {print $4}'`
+        # If we don't have connection, change the active WAN port (If there is any loss with multiple packets, it should change either)
+        if [ "$RET" -ne "$PACKETS" ]; then
+                if [ "$USINGWAN" = "1" ]; then
+                        /jffs/etc/config/wan2.up
+                        USINGWAN=2
+                        echo "Changed active WAN port to 2!"
+                else
+                        /jffs/etc/config/wan1.up
+                        USINGWAN=1
+                        echo "Changed active WAN port to 2!"
+                fi
+        fi 
+done;

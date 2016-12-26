@@ -1,0 +1,28 @@
+#!/bin/sh
+# Project: Dual WAN w/ Fail-over
+# Description: Maintains the startup for the second WAN connection.
+# Author: Sam W. <samuel.walton@seven-labs.com>
+
+# Configure variables to be used for setting up the interface.
+WAN2_IFNAME=vlan3
+WAN2_IPADDR=192.168.2.2
+WAN2_GATEWAY=192.168.2.1
+WAN2_NETMASK=255.255.255.0
+
+# If WAN2's IP is incorrect this script
+# will attempt to set the correct one via nvram
+if [ "$(nvram get wan2_ipaddr)" != "$WAN2_IPADDR" ]; then
+   nvram set wan2_ifname=$WAN2_IFNAME   
+   nvram set wan2_ipaddr=$WAN2_IPADDR
+   nvram set wan2_gateway=$WAN2_GATEWAY
+   nvram set wan2_netmask=$WAN2_NETMASK
+   nvram commit
+fi
+
+# Bring up the interface.
+ifconfig $(nvram get wan2_ifname) up $(nvram get wan2_ipaddr) netmask $(nvram get wan2_netmask)
+
+# Postrouting
+# We will want to set masquerade on WAN2, otherwise after changing active WAN, we'll remain up in the air.
+iptables -t nat -A POSTROUTING -o vlan2 -j MASQUERADE
+

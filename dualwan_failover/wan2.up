@@ -1,0 +1,16 @@
+#!/bin/sh
+# WAN2 
+DEV=vlan3
+GATEWAY=`nvram get wan2_gateway` 
+DNS1=8.8.8.8
+DNS2=8.8.4.4
+
+nvram set wan_dns="$DNS1 $DNS2"
+ip route delete default
+# ip route delete default
+ip route add default via $GATEWAY dev $DEV
+echo "nameserver $DNS1" >/tmp/resolv.dnsmasq
+echo "nameserver $DNS2" >>/tmp/resolv.dnsmasq
+pr="$(ps|awk '/dnsmasq/ {print $1}')"
+kill -9 $pr
+dnsmasq --conf-file=/tmp/dnsmasq.conf

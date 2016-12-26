@@ -1,0 +1,26 @@
+#!/bin/sh
+# Project: Dual WAN w/ Fail-over
+# Description: This script will bring up WAN1 interface.
+# Author: Sam W. <samuel.walton@seven-labs.com>
+# Version: 0.1
+
+# WAN1-specific variables (using Google DNS)
+DEV=vlan1
+GATEWAY=`nvram get wan_gateway` 
+DNS1=8.8.8.8
+DNS2=8.8.4.4
+
+# Configure interface DNS settings.
+nvram set wan_dns="$DNS1 $DNS2"
+
+# Delete our default route and add the correct route to our gateway.
+ip route delete default
+# ip route delete default
+ip route add default via $GATEWAY dev $DEV
+
+# Update dnsmasq
+echo "nameserver $DNS1" >/tmp/resolv.dnsmasq
+echo "nameserver $DNS2" >>/tmp/resolv.dnsmasq
+pr="$(ps|awk '/dnsmasq/ {print $1}')"
+kill -9 $pr
+dnsmasq --conf-file=/tmp/dnsmasq.conf
